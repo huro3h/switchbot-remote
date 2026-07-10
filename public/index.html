@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>エアコン リモコン</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+      background: #f0f4f8;
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 24px 16px;
+    }
+
+    .remote {
+      background: #fff;
+      border-radius: 24px;
+      padding: 28px 20px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #333;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    /* 電源 */
+    .power-row {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .power-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .power-btn.off {
+      background: #fce4ec;
+      color: #c62828;
+    }
+
+    .power-btn:active { transform: scale(0.94); }
+
+    /* 温度 */
+    .temp-section {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .temp-display {
+      text-align: center;
+      min-width: 80px;
+    }
+
+    .temp-display .value {
+      font-size: 52px;
+      font-weight: 300;
+      color: #1a1a1a;
+      line-height: 1;
+    }
+
+    .temp-display .unit {
+      font-size: 16px;
+      color: #888;
+    }
+
+    .temp-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 1.5px solid #ddd;
+      background: #fff;
+      font-size: 24px;
+      color: #333;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .temp-btn:active {
+      background: #f0f0f0;
+      transform: scale(0.92);
+    }
+
+    /* セクションラベル */
+    .section-label {
+      font-size: 12px;
+      color: #999;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    /* モード・風量ボタン群 */
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .btn-group button {
+      flex: 1 1 auto;
+      min-width: 56px;
+      padding: 10px 4px;
+      border-radius: 12px;
+      border: 1.5px solid #e0e0e0;
+      background: #fff;
+      font-size: 13px;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-group button.active {
+      background: #1976d2;
+      border-color: #1976d2;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .btn-group button:active { opacity: 0.75; }
+
+    .btn-group button:disabled {
+      color: #bbb;
+      border-color: #e8e8e8;
+      cursor: not-allowed;
+    }
+
+    /* トースト通知 */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #323232;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 24px;
+      font-size: 14px;
+      opacity: 0;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #toast.error { background: #c62828; }
+  </style>
+</head>
+<body>
+  <div class="remote">
+    <h1>エアコン リモコン</h1>
+
+    <!-- 電源 -->
+    <div class="power-row">
+      <button class="power-btn" id="powerBtn" onclick="togglePower()">⏻</button>
+    </div>
+
+    <!-- 温度 -->
+    <div class="temp-section">
+      <button class="temp-btn" onclick="changeTemp(-1)">−</button>
+      <div class="temp-display">
+        <div class="value" id="tempValue">26</div>
+        <div class="unit">°C</div>
+      </div>
+      <button class="temp-btn" onclick="changeTemp(+1)">＋</button>
+    </div>
+
+    <!-- モード -->
+    <div class="section-label">モード</div>
+    <div class="btn-group" id="modeGroup">
+      <button onclick="setMode(1)">自動</button>
+      <button onclick="setMode(2)">冷房</button>
+      <button onclick="setMode(3)">除湿</button>
+      <button onclick="setMode(5)">暖房</button>
+      <button disabled title="このエアコンでは非対応">送風</button>
+    </div>
+
+    <!-- 風量 -->
+    <div class="section-label">風量</div>
+    <div class="btn-group" id="fanGroup">
+      <button onclick="setFan(1)">自動</button>
+      <button onclick="setFan(2)">風量1</button>
+      <button onclick="setFan(3)">風量2</button>
+      <button onclick="setFan(4)">風量3</button>
+      <button onclick="setFan(5)">風量4</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
