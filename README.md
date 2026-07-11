@@ -3,7 +3,7 @@
 SwitchBot APIとCloudflare Workers/Accessを使ったエアコンWebリモコン。  
 GitHub認証付きのURLにアクセスするだけでスマホ・PCから自宅のエアコンを操作できる。
 
-<img width="200" alt="s 1" src="https://github.com/user-attachments/assets/654e3e2b-7387-4c18-aea2-1b9aafd4bff0" />
+<img width="200" alt="s" src="https://github.com/user-attachments/assets/6f05a0ab-58dc-4e1b-adb7-bedaf86ace09" />
 
 ---
 
