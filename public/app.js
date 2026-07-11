@@ -2,11 +2,70 @@ const WORKER_URL = '/command';
 const TEMP_MIN = 16, TEMP_MAX = 30;
 
 const DEFAULT_STATE = { power: 'on', temperature: 26, mode: 2, fanSpeed: 1 };
+const DEFAULT_PRESETS = [18, 22, 25, 27];
 
 let state = { ...DEFAULT_STATE, ...JSON.parse(localStorage.getItem('ac_state') || '{}') };
+let presets = JSON.parse(localStorage.getItem('ac_presets') || 'null') || [...DEFAULT_PRESETS];
 
 function saveState() {
   localStorage.setItem('ac_state', JSON.stringify(state));
+}
+
+function savePresets() {
+  localStorage.setItem('ac_presets', JSON.stringify(presets));
+}
+
+function buildPresetUI() {
+  // セット用ボタン行
+  const btnRow = document.getElementById('presetBtnRow');
+  btnRow.innerHTML = '';
+  presets.forEach((temp, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-tap-btn';
+    btn.textContent = temp + '°C';
+    btn.onclick = () => applyPreset(i);
+    btnRow.appendChild(btn);
+  });
+
+  // 編集エリア内の入力欄（ボタン行と同じ横並び）
+  const inner = document.getElementById('presetEditInner');
+  inner.innerHTML = '';
+  presets.forEach((temp, i) => {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'preset-edit-input';
+    input.id = 'presetEditInput' + i;
+    input.min = TEMP_MIN;
+    input.max = TEMP_MAX;
+    input.value = temp;
+    inner.appendChild(input);
+  });
+}
+
+function togglePresetEdit() {
+  const area = document.getElementById('presetEditArea');
+  const btn = document.getElementById('presetEditToggle');
+  const isOpen = area.classList.toggle('open');
+  btn.textContent = isOpen ? 'キャンセル' : '編集';
+}
+
+function saveAndClosePresets() {
+  presets = Array.from({ length: 4 }, (_, i) => {
+    const el = document.getElementById('presetEditInput' + i);
+    return Math.min(TEMP_MAX, Math.max(TEMP_MIN, parseInt(el.value, 10) || DEFAULT_PRESETS[i]));
+  });
+  savePresets();
+  buildPresetUI();
+
+  const area = document.getElementById('presetEditArea');
+  area.classList.remove('open');
+  document.getElementById('presetEditToggle').textContent = '編集';
+}
+
+function applyPreset(index) {
+  state.temperature = presets[index];
+  renderUI();
+  sendCommand();
 }
 
 function renderUI() {
@@ -78,4 +137,5 @@ function setFan(fan) {
   sendCommand();
 }
 
+buildPresetUI();
 renderUI();

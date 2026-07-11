@@ -103,14 +103,118 @@
       transform: scale(0.92);
     }
 
-    /* セクションラベル */
+    /* セクションラベル行（ラベル＋右端ボタン） */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
     .section-label {
       font-size: 12px;
       color: #999;
       font-weight: 500;
       letter-spacing: 0.05em;
-      margin-bottom: 10px;
     }
+
+    .edit-toggle-btn {
+      font-size: 11px;
+      color: #1976d2;
+      background: none;
+      border: 1px solid #bbdefb;
+      border-radius: 6px;
+      padding: 2px 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .edit-toggle-btn:hover { background: #e3f2fd; }
+
+    /* プリセットボタン行 */
+    .preset-btn-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .preset-tap-btn {
+      flex: 1;
+      padding: 10px 4px;
+      border-radius: 12px;
+      border: 1.5px solid #e0e0e0;
+      background: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-tap-btn:active { opacity: 0.7; }
+
+    /* アコーディオン編集エリア */
+    .preset-edit-area {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.28s ease, opacity 0.22s ease;
+      opacity: 0;
+      margin-bottom: 0;
+    }
+
+    .preset-edit-area.open {
+      max-height: 120px;
+      opacity: 1;
+      margin-bottom: 16px;
+    }
+
+    .preset-edit-inner {
+      display: flex;
+      gap: 8px;
+      padding-top: 6px;
+    }
+
+    .preset-edit-input {
+      flex: 1;
+      height: 38px;
+      border: 1.5px solid #ddd;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a1a1a;
+      background: #fff;
+      outline: none;
+      -moz-appearance: textfield;
+      appearance: textfield;
+      transition: border-color 0.15s;
+    }
+
+    .preset-edit-input::-webkit-inner-spin-button,
+    .preset-edit-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .preset-edit-input:focus { border-color: #1976d2; }
+
+    /* 完了ボタン行 */
+    .preset-done-row {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 6px;
+    }
+
+    .preset-done-btn {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      background: #1976d2;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 16px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .preset-done-btn:active { background: #1565c0; }
 
     /* モード・風量ボタン群 */
     .btn-group {
@@ -192,8 +296,23 @@
       <button class="temp-btn" onclick="changeTemp(+1)">＋</button>
     </div>
 
+    <!-- プリセット温度 -->
+    <div class="section-header">
+      <span class="section-label">プリセット温度</span>
+      <button class="edit-toggle-btn" id="presetEditToggle" onclick="togglePresetEdit()">編集</button>
+    </div>
+    <div class="preset-btn-row" id="presetBtnRow"></div>
+    <div class="preset-edit-area" id="presetEditArea">
+      <div class="preset-edit-inner" id="presetEditInner"></div>
+      <div class="preset-done-row">
+        <button class="preset-done-btn" onclick="saveAndClosePresets()">完了</button>
+      </div>
+    </div>
+
     <!-- モード -->
-    <div class="section-label">モード</div>
+    <div class="section-header" style="margin-bottom: 10px;">
+      <span class="section-label">モード</span>
+    </div>
     <div class="btn-group" id="modeGroup">
       <button onclick="setMode(1)">自動</button>
       <button onclick="setMode(2)">冷房</button>
@@ -203,7 +322,9 @@
     </div>
 
     <!-- 風量 -->
-    <div class="section-label">風量</div>
+    <div class="section-header" style="margin-bottom: 10px;">
+      <span class="section-label">風量</span>
+    </div>
     <div class="btn-group" id="fanGroup">
       <button onclick="setFan(1)">自動</button>
       <button onclick="setFan(2)">風量1</button>
