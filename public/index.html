@@ -23,6 +23,7 @@
       gap: 20px;
       width: 100%;
       max-width: 360px;
+      padding-bottom: 80px;
     }
 
     .remote {
@@ -302,6 +303,34 @@
       border-radius: 14px;
     }
 
+    /* 赤外線照明一覧 */
+    #irLightList {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .ir-light-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brightness-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .brightness-label {
+      font-size: 13px;
+      color: #888;
+      min-width: 40px;
+      text-align: center;
+    }
+
     /* トースト通知 */
     #toast {
       position: fixed;
@@ -310,8 +339,8 @@
       transform: translateX(-50%) translateY(80px);
       background: #323232;
       color: #fff;
-      padding: 12px 20px;
-      border-radius: 24px;
+      padding: 7px 20px;
+      border-radius: 20px;
       font-size: 14px;
       opacity: 0;
       transition: all 0.3s ease;
@@ -390,11 +419,17 @@
       <h1>家の照明</h1>
       <div id="lightList"></div>
     </div>
+
+    <div class="remote">
+      <h1>家の照明（赤外線）</h1>
+      <div id="irLightList"></div>
+    </div>
   </div>
 
   <div id="toast"></div>
 
   <script src="app.js"></script>
   <script src="light-app.js"></script>
+  <script src="ir-light-app.js"></script>
 </body>
 </html>

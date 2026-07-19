@@ -1,7 +1,7 @@
 # switchbot-remote
 
 SwitchBot APIとCloudflare Workers/Accessを使ったエアコン・照明Webリモコン。  
-GitHub認証付きのURLにアクセスするだけでスマホ・PCから自宅のエアコン・照明を操作できる。1ページ内に「家のエアコン」「家の照明」のカードを縦に並べたシンプルな構成。
+GitHub認証付きのURLにアクセスするだけでスマホ・PCから自宅のエアコン・照明を操作できる。1ページ内に「家のエアコン」「家の照明」「家の照明（赤外線）」のカードを縦に並べたシンプルな構成。
 
 ---
 
@@ -129,6 +129,11 @@ sequenceDiagram
   `LIGHT_DEVICES` secret に `id → {deviceId, label}` のマップをJSON文字列で保持し、`GET /lights` がそこから `deviceId` を除いた一覧をフロントに返す。  
   照明を追加・削除する際は `LIGHT_DEVICES` を更新して再デプロイするだけでよく、コード変更は不要。
 
+- **赤外線照明（Hub経由）はON/OFF＋明るさ相対調整のみ**  
+  SwitchBot公式ドキュメントの `Light` タイプ赤外線リモコンが対応するコマンドは `turnOn` / `turnOff` / `brightnessUp` / `brightnessDown` の4つのみ。  
+  明るさは実機リモコンと同じ相対操作（絶対値指定不可）で、Worker側で許可コマンドをホワイトリスト検証してから SwitchBot API に転送する。  
+  `IR_LIGHTS` secretに `id → {deviceId, label}` のマップをJSON文字列で保持し、プラグ照明と同じ仕組みでデバイスを追加できる。
+
 ---
 
 ## ディレクトリ構成
@@ -138,13 +143,14 @@ switchbot-remote/
 ├── src/
 │   └── index.ts          # Cloudflare Workers（API中継）
 ├── public/
-│   ├── index.html         # エアコン・照明 共通の1ページUI（カードを縦に2枚並べる）
+│   ├── index.html         # エアコン・照明 共通の1ページUI（カードを縦に3枚並べる）
 │   ├── app.js              # エアコン 状態管理・API呼び出し
-│   └── light-app.js        # 照明一覧取得・状態管理・API呼び出し
+│   ├── light-app.js        # プラグ照明一覧取得・状態管理・API呼び出し
+│   └── ir-light-app.js     # 赤外線照明一覧取得・状態管理・API呼び出し
 └── wrangler.toml         # Cloudflare デプロイ設定
 ```
 
-`app.js` と `light-app.js` は同じページ内で読み込まれグローバルスコープを共有するため、関数名の衝突を避ける命名にしている（照明側は `setLightPower` 等、`Light` を含む名前）。
+`app.js` / `light-app.js` / `ir-light-app.js` は同じページ内で読み込まれグローバルスコープを共有するため、関数名の衝突を避ける命名にしている（プラグ照明側は `setLightPower` 等 `Light` を含む名前、赤外線照明側は `setIrLightPower` 等 `IrLight` を含む名前）。読み込み順は `app.js` → `light-app.js` → `ir-light-app.js` で固定（`showToast`/`renderButtons` の共有に依存するため）。
 
 ---
 
@@ -212,6 +218,39 @@ switchbot-remote/
 { "statusCode": 100, "body": {}, "message": "success" }
 ```
 
+### `GET /ir-lights`
+
+登録済み赤外線照明の一覧を返す（`deviceId` はサーバー内部のみで保持し、レスポンスには含まれない）。
+
+**レスポンス例**
+
+```json
+[
+  { "id": "panahk9493-1", "label": "panahk9493-1" }
+]
+```
+
+### `POST /ir-light-command`
+
+指定した赤外線照明へコマンドを送信する。
+
+**リクエストボディ**
+
+```json
+{ "id": "panahk9493-1", "command": "turnOn" }
+```
+
+| フィールド | 型 | 値 |
+|---|---|---|
+| id | string | `IR_LIGHTS` に登録したキー |
+| command | string | `"turnOn"` / `"turnOff"` / `"brightnessUp"` / `"brightnessDown"`（それ以外は400エラー） |
+
+**レスポンス例**
+
+```json
+{ "statusCode": 100, "body": {}, "message": "success" }
+```
+
 ---
 
 ## セットアップ手順
@@ -232,10 +271,11 @@ npx wrangler secret put SWITCHBOT_TOKEN
 npx wrangler secret put SWITCHBOT_SECRET
 npx wrangler secret put AC_DEVICE_ID
 npx wrangler secret put LIGHT_DEVICES  # JSON文字列。例は .env.example を参照
+npx wrangler secret put IR_LIGHTS      # JSON文字列。例は .env.example を参照
 npx wrangler deploy
 ```
 
-`LIGHT_DEVICES` に設定する `deviceId` は SwitchBot API の `GET /v1.1/devices`（要HMAC署名）を叩けば一覧取得できる。デバイス一覧確認用のスクリプトはリポジトリには含めず、必要な時にローカル環境限定でその都度用意する運用とする（認証情報をリポジトリに残さないため）。
+`LIGHT_DEVICES` / `IR_LIGHTS` に設定する `deviceId` は SwitchBot API の `GET /v1.1/devices`（要HMAC署名）を叩けば一覧取得できる（プラグ等の物理デバイスは `body.deviceList`、赤外線リモコンは `body.infraredRemoteList` に含まれる）。デバイス一覧確認用のスクリプトはリポジトリには含めず、必要な時にローカル環境限定でその都度用意する運用とする（認証情報をリポジトリに残さないため）。
 
 ### 2. Cloudflare Access 設定
 

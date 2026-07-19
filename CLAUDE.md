@@ -5,7 +5,7 @@ SwitchBot API と Cloudflare Workers/Access を使ったエアコン・照明 We
 ## 技術スタック
 
 - **Worker**: `src/index.ts` — SwitchBot API への HMAC-SHA256 署名付きリクエスト中継
-- **UI**: `public/index.html` 1ページに「家のエアコン」「家の照明」の2カードを縦に並べる構成。`public/app.js`（エアコン）と `public/light-app.js`（照明）を両方読み込む — Vanilla HTML/CSS/JS（フレームワークなし）
+- **UI**: `public/index.html` 1ページに「家のエアコン」「家の照明」「家の照明（赤外線）」の3カードを縦に並べる構成。`public/app.js`（エアコン）・`public/light-app.js`（照明＝プラグ）・`public/ir-light-app.js`（照明＝赤外線リモコン）を読み込む — Vanilla HTML/CSS/JS（フレームワークなし）
 - **ホスティング**: Cloudflare Workers Static Assets（同一オリジン配信、CORS 不要）
 - **認証**: Cloudflare Access + GitHub OAuth（Workers の前段で処理、Worker 側の実装不要）
 
@@ -25,21 +25,23 @@ npx wrangler secret put SWITCHBOT_TOKEN
 npx wrangler secret put SWITCHBOT_SECRET
 npx wrangler secret put AC_DEVICE_ID
 npx wrangler secret put LIGHT_DEVICES
+npx wrangler secret put IR_LIGHTS
 ```
 
-`LIGHT_DEVICES` は `{ "id": { "deviceId": "...", "label": "表示名" }, ... }` 形式のJSON文字列。照明を追加・削除する際はコード変更不要で、このsecretを更新して再デプロイするだけでよい。
+`LIGHT_DEVICES` / `IR_LIGHTS` はどちらも `{ "id": { "deviceId": "...", "label": "表示名" }, ... }` 形式のJSON文字列。デバイスを追加・削除する際はコード変更不要で、該当するsecretを更新して再デプロイするだけでよい。
 
 ## 主要ファイル
 
 | ファイル | 役割 |
 |---|---|
-| `src/index.ts` | Worker 本体。`POST /command`（エアコン）、`GET /lights`・`POST /light-command`（照明）を受け取り SwitchBot API に転送 |
-| `public/index.html` | エアコン・照明 共通の1ページ UI + スタイル（`.remote` カードを2枚縦に並べる） |
+| `src/index.ts` | Worker 本体。`POST /command`（エアコン）、`GET /lights`・`POST /light-command`（照明＝プラグ）、`GET /ir-lights`・`POST /ir-light-command`（照明＝赤外線）を受け取り SwitchBot API に転送 |
+| `public/index.html` | エアコン・照明 共通の1ページ UI + スタイル（`.remote` カードを3枚縦に並べる） |
 | `public/app.js` | エアコンの状態管理・API 呼び出し・プリセット管理 |
-| `public/light-app.js` | 照明一覧の取得・状態管理・API 呼び出し（`#lightList` にボタンを動的生成） |
+| `public/light-app.js` | プラグ照明一覧の取得・状態管理・API 呼び出し（`#lightList` にボタンを動的生成） |
+| `public/ir-light-app.js` | 赤外線照明一覧の取得・状態管理・API 呼び出し（`#irLightList` にボタンを動的生成） |
 | `wrangler.toml` | Cloudflare デプロイ設定 |
 
-**注意**: `app.js` と `light-app.js` は同一ページで classic script として読み込まれ、グローバルスコープを共有する。関数名の衝突を避けるため、照明側の関数は `setLightPower` / `sendLightCommand` / `loadLightState` / `saveLightState` / `initLights` のように `Light` 系の接頭辞・接尾辞を付けて命名している（`showToast` はエアコン側 `app.js` の定義を共有）。新しく家電を追加する場合も同様に、共有ページ内で関数名が衝突しないよう命名すること。
+**注意**: `app.js` / `light-app.js` / `ir-light-app.js` は同一ページで classic script として読み込まれ、グローバルスコープを共有する。関数名の衝突を避けるため、照明（プラグ）側は `Light` 系（`setLightPower` 等）、赤外線照明側は `IrLight` 系（`setIrLightPower`/`sendIrLightCommand`/`loadIrLightState`/`saveIrLightState`/`initIrLights`/`adjustIrBrightness`）の接頭辞・接尾辞を付けて命名している。`showToast`（`app.js`）と `renderButtons`（`light-app.js`、ON/OFFボタンのハイライト処理）は共通利用しており、`ir-light-app.js` はそれらに依存するため **`app.js` → `light-app.js` → `ir-light-app.js` の読み込み順を変更しないこと**。新しく家電を追加する場合も同様に、共有ページ内で関数名が衝突しないよう命名すること。
 
 ## UI の仕様メモ
 
@@ -55,6 +57,13 @@ npx wrangler secret put LIGHT_DEVICES
 - 電源は ON/OFF を独立したボタンとして分離（トグル式ではない）。冪等性のため、現在の状態に関わらずボタンは常に対応するコマンド（`turnOn`/`turnOff`）を明示的に送信する
 - エアコンと同様、状態は照明ごとに `localStorage('light_state_<id>')` に保存（プラグ自体はステータス取得APIに対応しているが、エアコンと構成を揃えるため未使用）
 - 照明を増やす場合: SwitchBot API の `GET /v1.1/devices` で新しいプラグの `deviceId` を確認 → `LIGHT_DEVICES` secret に追記して再デプロイ（フロント・Worker コード変更不要）。デバイス一覧確認用スクリプトは認証情報を含むためリポジトリには置かず、必要な都度ローカルで用意する
+
+### 赤外線照明（`ir-light-app.js`）
+- 実体は Hub 経由の赤外線バーチャルリモコン（`remoteType: "Light"`）。SwitchBot公式ドキュメントの対応コマンドは `turnOn` / `turnOff` / `brightnessUp` / `brightnessDown` の4つのみ（明るさの絶対値指定は不可、実機リモコンと同じ相対操作）
+- Worker側で `IR_LIGHT_COMMANDS` ホワイトリストにより、上記4コマンド以外は `400` で拒否する（任意のコマンド文字列をSwitchBot APIにそのまま転送しないための安全対策）
+- UIはON/OFFボタン＋明るさ`−`/`＋`ボタン（AC温度調整と同じ`.temp-btn`スタイルを流用）。明るさは相対操作のため数値表示は持たない
+- ON/OFF状態のみ `localStorage('ir_light_state_<id>')` に保存（明るさは状態を持たないため保存対象外）
+- プラグ照明と同様、`IR_LIGHTS` secretを更新するだけでデバイス追加可能（コード変更不要）
 
 ## 制約
 
