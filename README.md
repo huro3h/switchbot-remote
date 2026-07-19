@@ -3,9 +3,6 @@
 SwitchBot APIとCloudflare Workers/Accessを使ったエアコン・照明Webリモコン。  
 GitHub認証付きのURLにアクセスするだけでスマホ・PCから自宅のエアコン・照明を操作できる。1ページ内に「家のエアコン」「家の照明」のカードを縦に並べたシンプルな構成。
 
-<img width="200" alt="s" src="https://github.com/user-attachments/assets/7dc654bb-cdd2-40fd-8d03-7cd3ac988b91" />
-
-
 ---
 
 ## システム全体像
