@@ -69,9 +69,8 @@ function applyPreset(index) {
 }
 
 function renderUI() {
-  const powerBtn = document.getElementById('powerBtn');
-  powerBtn.classList.toggle('off', state.power === 'off');
-  powerBtn.title = state.power === 'on' ? 'ONで動作中（タップでOFF）' : 'OFFです（タップでON）';
+  document.getElementById('powerOnBtn').classList.toggle('active', state.power === 'on');
+  document.getElementById('powerOffBtn').classList.toggle('active', state.power === 'off');
 
   document.getElementById('tempValue').textContent = state.temperature;
 
@@ -111,8 +110,8 @@ async function sendCommand() {
   }
 }
 
-function togglePower() {
-  state.power = state.power === 'on' ? 'off' : 'on';
+function setPower(power) {
+  state.power = power;
   renderUI();
   sendCommand();
 }

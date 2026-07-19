@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>家のエアコン</title>
+  <title>家のエアコン・照明</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17,12 +17,19 @@
       padding: 24px 16px;
     }
 
+    .page {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+      max-width: 360px;
+    }
+
     .remote {
       background: #fff;
       border-radius: 24px;
       padding: 28px 20px;
       width: 100%;
-      max-width: 360px;
       box-shadow: 0 4px 24px rgba(0,0,0,0.08);
     }
 
@@ -38,27 +45,37 @@
     .power-row {
       display: flex;
       justify-content: center;
+      gap: 12px;
       margin-bottom: 28px;
     }
 
     .power-btn {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      border: none;
-      font-size: 28px;
+      flex: 1;
+      max-width: 130px;
+      padding: 16px 4px;
+      border-radius: 16px;
+      border: 1.5px solid #e0e0e0;
+      background: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      color: #888;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+      transition: all 0.15s;
+    }
+
+    .power-btn.on.active {
       background: #e8f5e9;
+      border-color: #2e7d32;
       color: #2e7d32;
     }
 
-    .power-btn.off {
+    .power-btn.off.active {
       background: #fce4ec;
+      border-color: #c62828;
       color: #c62828;
     }
 
-    .power-btn:active { transform: scale(0.94); }
+    .power-btn:active { opacity: 0.75; }
 
     /* 温度 */
     .temp-section {
@@ -252,6 +269,39 @@
       cursor: not-allowed;
     }
 
+    /* 照明一覧 */
+    #lightList {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .light-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .light-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #555;
+    }
+
+    .power-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .power-group .power-btn {
+      flex: none;
+      max-width: none;
+      min-width: 64px;
+      padding: 10px 20px;
+      border-radius: 14px;
+    }
+
     /* トースト通知 */
     #toast {
       position: fixed;
@@ -278,64 +328,73 @@
   </style>
 </head>
 <body>
-  <div class="remote">
-    <h1>家のエアコン</h1>
+  <div class="page">
+    <div class="remote">
+      <h1>家のエアコン</h1>
 
-    <!-- 電源 -->
-    <div class="power-row">
-      <button class="power-btn" id="powerBtn" onclick="togglePower()">⏻</button>
-    </div>
-
-    <!-- 温度 -->
-    <div class="temp-section">
-      <button class="temp-btn" onclick="changeTemp(-1)">−</button>
-      <div class="temp-display">
-        <div class="value" id="tempValue">26</div>
-        <div class="unit">°C</div>
+      <!-- 電源 -->
+      <div class="power-row">
+        <button class="power-btn off" id="powerOffBtn" onclick="setPower('off')">OFF</button>
+        <button class="power-btn on" id="powerOnBtn" onclick="setPower('on')">ON</button>
       </div>
-      <button class="temp-btn" onclick="changeTemp(+1)">＋</button>
-    </div>
 
-    <!-- プリセット温度 -->
-    <div class="section-header">
-      <span class="section-label">プリセット温度</span>
-      <button class="edit-toggle-btn" id="presetEditToggle" onclick="togglePresetEdit()">編集</button>
-    </div>
-    <div class="preset-btn-row" id="presetBtnRow"></div>
-    <div class="preset-edit-area" id="presetEditArea">
-      <div class="preset-edit-inner" id="presetEditInner"></div>
-      <div class="preset-done-row">
-        <button class="preset-done-btn" onclick="saveAndClosePresets()">完了</button>
+      <!-- 温度 -->
+      <div class="temp-section">
+        <button class="temp-btn" onclick="changeTemp(-1)">−</button>
+        <div class="temp-display">
+          <div class="value" id="tempValue">26</div>
+          <div class="unit">°C</div>
+        </div>
+        <button class="temp-btn" onclick="changeTemp(+1)">＋</button>
+      </div>
+
+      <!-- プリセット温度 -->
+      <div class="section-header">
+        <span class="section-label">プリセット温度</span>
+        <button class="edit-toggle-btn" id="presetEditToggle" onclick="togglePresetEdit()">編集</button>
+      </div>
+      <div class="preset-btn-row" id="presetBtnRow"></div>
+      <div class="preset-edit-area" id="presetEditArea">
+        <div class="preset-edit-inner" id="presetEditInner"></div>
+        <div class="preset-done-row">
+          <button class="preset-done-btn" onclick="saveAndClosePresets()">完了</button>
+        </div>
+      </div>
+
+      <!-- モード -->
+      <div class="section-header" style="margin-bottom: 10px;">
+        <span class="section-label">モード</span>
+      </div>
+      <div class="btn-group" id="modeGroup">
+        <button onclick="setMode(1)">自動</button>
+        <button onclick="setMode(2)">冷房</button>
+        <button onclick="setMode(3)">除湿</button>
+        <button onclick="setMode(5)">暖房</button>
+        <button disabled title="このエアコンでは非対応">送風</button>
+      </div>
+
+      <!-- 風量 -->
+      <div class="section-header" style="margin-bottom: 10px;">
+        <span class="section-label">風量</span>
+      </div>
+      <div class="btn-group" id="fanGroup">
+        <button onclick="setFan(1)">自動</button>
+        <button onclick="setFan(2)">風量1</button>
+        <button onclick="setFan(3)">風量2</button>
+        <button onclick="setFan(4)">風量3</button>
+        <button onclick="setFan(5)">風量4</button>
       </div>
     </div>
 
-    <!-- モード -->
-    <div class="section-header" style="margin-bottom: 10px;">
-      <span class="section-label">モード</span>
-    </div>
-    <div class="btn-group" id="modeGroup">
-      <button onclick="setMode(1)">自動</button>
-      <button onclick="setMode(2)">冷房</button>
-      <button onclick="setMode(3)">除湿</button>
-      <button onclick="setMode(5)">暖房</button>
-      <button disabled title="このエアコンでは非対応">送風</button>
-    </div>
-
-    <!-- 風量 -->
-    <div class="section-header" style="margin-bottom: 10px;">
-      <span class="section-label">風量</span>
-    </div>
-    <div class="btn-group" id="fanGroup">
-      <button onclick="setFan(1)">自動</button>
-      <button onclick="setFan(2)">風量1</button>
-      <button onclick="setFan(3)">風量2</button>
-      <button onclick="setFan(4)">風量3</button>
-      <button onclick="setFan(5)">風量4</button>
+    <div class="remote">
+      <h1>家の照明</h1>
+      <div id="lightList"></div>
     </div>
   </div>
 
   <div id="toast"></div>
 
   <script src="app.js"></script>
+  <script src="light-app.js"></script>
 </body>
 </html>

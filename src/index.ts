@@ -1,10 +1,21 @@
 const SWITCHBOT_API_BASE = 'https://api.switch-bot.com';
 
+interface LightDevice {
+  deviceId: string;
+  label: string;
+}
+
 export interface Env {
   SWITCHBOT_TOKEN: string;
   SWITCHBOT_SECRET: string;
   AC_DEVICE_ID: string;
+  // JSON文字列: { "id": { "deviceId": "...", "label": "表示名" }, ... }
+  LIGHT_DEVICES: string;
   ASSETS: Fetcher;
+}
+
+function getLightDevices(env: Env): Record<string, LightDevice> {
+  return JSON.parse(env.LIGHT_DEVICES);
 }
 
 const CORS_HEADERS = {
@@ -69,6 +80,34 @@ export default {
         body: JSON.stringify({
           command: 'setAll',
           parameter: `${temperature},${mode},${fanSpeed},${power}`,
+          commandType: 'command',
+        }),
+      });
+      return jsonResponse(await res.json());
+    }
+
+    // GET /lights — 登録済み照明一覧（deviceIdは非公開、id/labelのみ返す）
+    if (pathname === '/lights' && request.method === 'GET') {
+      const lights = Object.entries(getLightDevices(env)).map(([id, d]) => ({ id, label: d.label }));
+      return jsonResponse(lights);
+    }
+
+    // POST /light-command — 照明（プラグ）へ電源コマンド送信
+    // body: { id: string, power: "on"|"off" }
+    if (pathname === '/light-command' && request.method === 'POST') {
+      const { id, power } = await request.json<{ id: string; power: 'on' | 'off' }>();
+
+      const device = getLightDevices(env)[id];
+      if (!device) {
+        return jsonResponse({ message: `unknown light id: ${id}` }, 404);
+      }
+
+      const res = await fetch(`${SWITCHBOT_API_BASE}/v1.1/devices/${device.deviceId}/commands`, {
+        method: 'POST',
+        headers: sbHeaders,
+        body: JSON.stringify({
+          command: power === 'on' ? 'turnOn' : 'turnOff',
+          parameter: 'default',
           commandType: 'command',
         }),
       });

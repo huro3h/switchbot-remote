@@ -1,7 +1,7 @@
 # switchbot-remote
 
-SwitchBot APIとCloudflare Workers/Accessを使ったエアコンWebリモコン。  
-GitHub認証付きのURLにアクセスするだけでスマホ・PCから自宅のエアコンを操作できる。
+SwitchBot APIとCloudflare Workers/Accessを使ったエアコン・照明Webリモコン。  
+GitHub認証付きのURLにアクセスするだけでスマホ・PCから自宅のエアコン・照明を操作できる。1ページ内に「家のエアコン」「家の照明」のカードを縦に並べたシンプルな構成。
 
 <img width="200" alt="s" src="https://github.com/user-attachments/assets/7dc654bb-cdd2-40fd-8d03-7cd3ac988b91" />
 
@@ -24,16 +24,20 @@ flowchart LR
     subgraph SwitchBot["SwitchBot"]
         API["SwitchBot API v1.1\napi.switch-bot.com"]
         Hub["Hub Mini"]
+        Plug["Plug Mini"]
     end
 
     AC["エアコン\n（赤外線受信）"]
+    Light["照明\n（プラグ経由で通電）"]
 
     Browser -->|"① HTTPS アクセス"| Access
     Access -->|"② JWT Cookie 発行"| Browser
     Browser -->|"③ リモコンUI 取得 / コマンド送信"| Worker
     Worker -->|"④ HMAC-SHA256 署名付きリクエスト"| API
-    API -->|"⑤ IR 信号送出指示"| Hub
-    Hub -->|"⑥ 赤外線"| AC
+    API -->|"⑤a IR 信号送出指示"| Hub
+    Hub -->|"⑥a 赤外線"| AC
+    API -->|"⑤b 電源ON/OFF指示"| Plug
+    Plug -->|"⑥b 通電/遮断"| Light
 ```
 
 ---
@@ -82,6 +86,8 @@ sequenceDiagram
     UI->>User: トースト通知「送信しました ✓」
 ```
 
+照明も同様の流れで、ページ読み込み時に `GET /lights` で登録済み照明一覧（id・label）を取得してボタンを描画し、`POST /light-command` に `{ id, power: "on" | "off" }` を送信すると、Worker が該当プラグの `deviceId` を解決して SwitchBot API へ `turnOn` / `turnOff` コマンドを転送する。
+
 ---
 
 ## 技術選定
@@ -118,6 +124,14 @@ sequenceDiagram
   APIに送信すると `failed to query command by mode: not match mode` エラーが返る。  
   UIでは `disabled` 表示とし、選択不可にしている。
 
+- **照明はプラグ（Plug Mini）による通電ON/OFFのみ**  
+  スマート電球ではなく既存の照明器具をプラグ経由で操作しているため、明るさ・色温度などの細かい制御はできない。  
+  エアコンと同様、実際のプラグの状態はAPIから取得可能だが、構成をエアコン側と揃えるため `localStorage` に最後に送信した状態を保持する方式を採用している。
+
+- **照明は複数台に対応**  
+  `LIGHT_DEVICES` secret に `id → {deviceId, label}` のマップをJSON文字列で保持し、`GET /lights` がそこから `deviceId` を除いた一覧をフロントに返す。  
+  照明を追加・削除する際は `LIGHT_DEVICES` を更新して再デプロイするだけでよく、コード変更は不要。
+
 ---
 
 ## ディレクトリ構成
@@ -127,9 +141,13 @@ switchbot-remote/
 ├── src/
 │   └── index.ts          # Cloudflare Workers（API中継）
 ├── public/
-│   └── index.html        # リモコン UI
+│   ├── index.html         # エアコン・照明 共通の1ページUI（カードを縦に2枚並べる）
+│   ├── app.js              # エアコン 状態管理・API呼び出し
+│   └── light-app.js        # 照明一覧取得・状態管理・API呼び出し
 └── wrangler.toml         # Cloudflare デプロイ設定
 ```
+
+`app.js` と `light-app.js` は同じページ内で読み込まれグローバルスコープを共有するため、関数名の衝突を避ける命名にしている（照明側は `setLightPower` 等、`Light` を含む名前）。
 
 ---
 
@@ -163,6 +181,40 @@ switchbot-remote/
 { "statusCode": 100, "body": {}, "message": "success" }
 ```
 
+### `GET /lights`
+
+登録済み照明の一覧を返す（`deviceId` はサーバー内部のみで保持し、レスポンスには含まれない）。
+
+**レスポンス例**
+
+```json
+[
+  { "id": "60w_light", "label": "60w_light" },
+  { "id": "100w_light", "label": "100w_light" }
+]
+```
+
+### `POST /light-command`
+
+指定した照明（プラグ）へ電源ON/OFFコマンドを送信する。
+
+**リクエストボディ**
+
+```json
+{ "id": "60w_light", "power": "on" }
+```
+
+| フィールド | 型 | 値 |
+|---|---|---|
+| id | string | `LIGHT_DEVICES` に登録したキー |
+| power | string | `"on"` / `"off"` |
+
+**レスポンス例**
+
+```json
+{ "statusCode": 100, "body": {}, "message": "success" }
+```
+
 ---
 
 ## セットアップ手順
@@ -181,8 +233,12 @@ cd switchbot-remote
 npm install
 npx wrangler secret put SWITCHBOT_TOKEN
 npx wrangler secret put SWITCHBOT_SECRET
+npx wrangler secret put AC_DEVICE_ID
+npx wrangler secret put LIGHT_DEVICES  # JSON文字列。例は .env.example を参照
 npx wrangler deploy
 ```
+
+`LIGHT_DEVICES` に設定する `deviceId` は SwitchBot API の `GET /v1.1/devices`（要HMAC署名）を叩けば一覧取得できる。デバイス一覧確認用のスクリプトはリポジトリには含めず、必要な時にローカル環境限定でその都度用意する運用とする（認証情報をリポジトリに残さないため）。
 
 ### 2. Cloudflare Access 設定
 
