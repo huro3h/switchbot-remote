@@ -270,21 +270,21 @@
       cursor: not-allowed;
     }
 
-    /* 照明一覧 */
-    #lightList {
+    /* プラグ一覧 */
+    #plugList {
       display: flex;
       flex-direction: column;
       gap: 20px;
     }
 
-    .light-row {
+    .plug-row {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 10px;
     }
 
-    .light-label {
+    .device-label {
       font-size: 14px;
       font-weight: 500;
       color: #555;
@@ -416,8 +416,8 @@
     </div>
 
     <div class="remote">
-      <h1>家の照明</h1>
-      <div id="lightList"></div>
+      <h1>家のプラグ</h1>
+      <div id="plugList"></div>
     </div>
 
     <div class="remote">
@@ -429,7 +429,7 @@
   <div id="toast"></div>
 
   <script src="app.js"></script>
-  <script src="light-app.js"></script>
+  <script src="plug-app.js"></script>
   <script src="ir-light-app.js"></script>
 </body>
 </html>

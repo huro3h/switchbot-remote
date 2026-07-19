@@ -51,7 +51,7 @@ function buildIrLightRow(light) {
   row.className = 'ir-light-row';
 
   const label = document.createElement('div');
-  label.className = 'light-label';
+  label.className = 'device-label';
   label.textContent = light.label;
 
   const group = document.createElement('div');
