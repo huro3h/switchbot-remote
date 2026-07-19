@@ -56,7 +56,7 @@ function buildPlugRow(plug) {
   offBtn.className = 'power-btn off';
   offBtn.textContent = 'OFF';
 
-  renderButtons(onBtn, offBtn, loadPlugState(plug.id));
+  renderButtons(onBtn, offBtn, plug.power ?? loadPlugState(plug.id));
   onBtn.onclick = () => setPlugPower(plug.id, 'on', onBtn, offBtn);
   offBtn.onclick = () => setPlugPower(plug.id, 'off', onBtn, offBtn);
 

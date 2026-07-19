@@ -70,7 +70,6 @@ export default {
     }
 
     const { pathname } = new URL(request.url);
-    const sbHeaders = await buildSwitchBotHeaders(env.SWITCHBOT_TOKEN, env.SWITCHBOT_SECRET);
 
     // POST /command — エアコンへコマンド送信
     // body: { temperature: number, mode: number, fanSpeed: number, power: "on"|"off" }
@@ -84,7 +83,7 @@ export default {
 
       const res = await fetch(`${SWITCHBOT_API_BASE}/v1.1/devices/${env.AC_DEVICE_ID}/commands`, {
         method: 'POST',
-        headers: sbHeaders,
+        headers: await buildSwitchBotHeaders(env.SWITCHBOT_TOKEN, env.SWITCHBOT_SECRET),
         body: JSON.stringify({
           command: 'setAll',
           parameter: `${temperature},${mode},${fanSpeed},${power}`,
@@ -94,9 +93,18 @@ export default {
       return jsonResponse(await res.json());
     }
 
-    // GET /plugs — 登録済みプラグ一覧（deviceIdは非公開、id/labelのみ返す）
+    // GET /plugs — 登録済みプラグ一覧を、実際の電源状態付きで返す（deviceIdは非公開）
     if (pathname === '/plugs' && request.method === 'GET') {
-      const plugs = Object.entries(getPlugDevices(env)).map(([id, d]) => ({ id, label: d.label }));
+      const plugs = await Promise.all(
+        Object.entries(getPlugDevices(env)).map(async ([id, d]) => {
+          const res = await fetch(`${SWITCHBOT_API_BASE}/v1.1/devices/${d.deviceId}/status`, {
+            headers: await buildSwitchBotHeaders(env.SWITCHBOT_TOKEN, env.SWITCHBOT_SECRET),
+          });
+          const data = await res.json<{ statusCode: number; body?: { power?: 'on' | 'off' } }>();
+          const power = data.statusCode === 100 ? data.body?.power ?? null : null;
+          return { id, label: d.label, power };
+        })
+      );
       return jsonResponse(plugs);
     }
 
@@ -112,7 +120,7 @@ export default {
 
       const res = await fetch(`${SWITCHBOT_API_BASE}/v1.1/devices/${device.deviceId}/commands`, {
         method: 'POST',
-        headers: sbHeaders,
+        headers: await buildSwitchBotHeaders(env.SWITCHBOT_TOKEN, env.SWITCHBOT_SECRET),
         body: JSON.stringify({
           command: power === 'on' ? 'turnOn' : 'turnOff',
           parameter: 'default',
@@ -144,7 +152,7 @@ export default {
 
       const res = await fetch(`${SWITCHBOT_API_BASE}/v1.1/devices/${device.deviceId}/commands`, {
         method: 'POST',
-        headers: sbHeaders,
+        headers: await buildSwitchBotHeaders(env.SWITCHBOT_TOKEN, env.SWITCHBOT_SECRET),
         body: JSON.stringify({
           command,
           parameter: 'default',

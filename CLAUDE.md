@@ -53,9 +53,10 @@ npx wrangler secret put IR_LIGHTS
 
 ### プラグ（`plug-app.js`）
 - 実体は SwitchBot プラグ（Plug Mini）による通電のON/OFF。明るさ・色温度などの制御は非対応
-- 複数プラグに対応。ページ読み込み時に `GET /plugs` で `{id, label}` の一覧を取得し、プラグごとに ON/OFF ボタンを動的生成する（`deviceId` はサーバー側のみで保持し、フロントには渡さない）
+- 複数プラグに対応。ページ読み込み時に `GET /plugs` で `{id, label, power}` の一覧を取得し、プラグごとに ON/OFF ボタンを動的生成する（`deviceId` はサーバー側のみで保持し、フロントには渡さない）
+- **実際の電源状態をAPIから取得（エアコンとの違い）**: プラグは双方向通信のため、Worker が `GET /plugs` 内でプラグごとに SwitchBot API の `GET /v1.1/devices/{deviceId}/status` を呼び出し、実際の `power` 値を返す。エアコン（IR、単方向）と違い本体・アプリ操作とのズレが生じない。ステータス取得に失敗した場合（`statusCode !== 100` や通信エラー）は `power: null` を返し、フロント側で `localStorage('plug_state_<id>')` にフォールバックする
 - 電源は ON/OFF を独立したボタンとして分離（トグル式ではない）。冪等性のため、現在の状態に関わらずボタンは常に対応するコマンド（`turnOn`/`turnOff`）を明示的に送信する
-- エアコンと同様、状態はプラグごとに `localStorage('plug_state_<id>')` に保存（プラグ自体はステータス取得APIに対応しているが、エアコンと構成を揃えるため未使用）
+- コマンド送信成功時は `localStorage('plug_state_<id>')` にも保存する（フォールバック用のキャッシュとして維持）
 - プラグを増やす場合: SwitchBot API の `GET /v1.1/devices` で新しいプラグの `deviceId` を確認 → `PLUG_DEVICES` secret に追記して再デプロイ（フロント・Worker コード変更不要）。デバイス一覧確認用スクリプトは認証情報を含むためリポジトリには置かず、必要な都度ローカルで用意する
 
 ### 赤外線照明（`ir-light-app.js`）

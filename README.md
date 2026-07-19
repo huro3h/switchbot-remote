@@ -83,7 +83,7 @@ sequenceDiagram
     UI->>User: トースト通知「送信しました ✓」
 ```
 
-プラグも同様の流れで、ページ読み込み時に `GET /plugs` で登録済みプラグ一覧（id・label）を取得してボタンを描画し、`POST /plug-command` に `{ id, power: "on" | "off" }` を送信すると、Worker が該当プラグの `deviceId` を解決して SwitchBot API へ `turnOn` / `turnOff` コマンドを転送する。
+プラグも同様の流れだが、`GET /plugs` は一覧だけでなく各プラグの実際の電源状態も返す。Worker がプラグごとに SwitchBot API の `GET /v1.1/devices/{deviceId}/status` を呼び出し、`{ id, label, power }` の形でフロントに返すことで、ページ読み込み時点の正確なON/OFF状態を表示できる（本体・アプリ側で操作した場合もズレない）。`POST /plug-command` に `{ id, power: "on" | "off" }` を送信すると、Worker が該当プラグの `deviceId` を解決して SwitchBot API へ `turnOn` / `turnOff` コマンドを転送する。
 
 ---
 
@@ -95,7 +95,7 @@ sequenceDiagram
 | 認証 | Cloudflare Access + GitHub OAuth | 設定のみで実装ゼロ・無料枠50ユーザー・個人利用に最適 |
 | UI 配信 | Workers Static Assets | Workers と同一オリジンで配信できるため CORS 不要・別途 Pages デプロイも不要 |
 | フロントエンド | Vanilla HTML/CSS/JS | 操作UIが単純なためフレームワーク不要・依存ゼロ |
-| 状態管理 | localStorage | エアコンは IR のため API からリアルタイム状態取得不可。最後に送信した値をブラウザに保持する |
+| 状態管理 | エアコン: localStorage / プラグ: SwitchBot API（`GET /status`） | エアコンは IR のため API からリアルタイム状態取得不可のため最後に送信した値をブラウザに保持する。プラグは双方向通信のため実際の状態をAPIから毎回取得する（localStorageは取得失敗時のフォールバック） |
 | HMAC 署名 | Web Crypto API (SHA-256) | Workers ランタイムのネイティブ API。外部ライブラリ不要 |
 
 ---
@@ -123,7 +123,7 @@ sequenceDiagram
 
 - **プラグ（Plug Mini）は通電ON/OFFのみ**  
   スマート電球ではなく既存の照明器具をプラグ経由で操作しているため、明るさ・色温度などの細かい制御はできない。  
-  エアコンと同様、実際のプラグの状態はAPIから取得可能だが、構成をエアコン側と揃えるため `localStorage` に最後に送信した状態を保持する方式を採用している。
+  エアコンと異なりプラグは双方向通信のため、`GET /v1.1/devices/{deviceId}/status` で実際の電源状態（`power: "on"|"off"`）を取得できる。ページ読み込み時にこれを取得して表示に反映している（`localStorage` は状態取得APIが失敗した場合のフォールバックとしてのみ利用）。
 
 - **プラグは複数台に対応**  
   `PLUG_DEVICES` secret に `id → {deviceId, label}` のマップをJSON文字列で保持し、`GET /plugs` がそこから `deviceId` を除いた一覧をフロントに返す。  
@@ -186,14 +186,14 @@ switchbot-remote/
 
 ### `GET /plugs`
 
-登録済みプラグの一覧を返す（`deviceId` はサーバー内部のみで保持し、レスポンスには含まれない）。
+登録済みプラグの一覧を、実際の電源状態付きで返す（`deviceId` はサーバー内部のみで保持し、レスポンスには含まれない）。Worker がプラグごとに SwitchBot API の `GET /v1.1/devices/{deviceId}/status` を呼び出して `power` を取得する。ステータス取得に失敗した場合は `power: null` を返す。
 
 **レスポンス例**
 
 ```json
 [
-  { "id": "60w_light", "label": "60w_light" },
-  { "id": "100w_light", "label": "100w_light" }
+  { "id": "60w_light", "label": "60w_light", "power": "on" },
+  { "id": "100w_light", "label": "100w_light", "power": "off" }
 ]
 ```
 
