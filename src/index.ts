@@ -13,6 +13,8 @@ export interface Env {
   PLUG_DEVICES: string;
   // JSON文字列: { "id": { "deviceId": "...", "label": "表示名" }, ... }（赤外線リモコンの照明）
   IR_LIGHTS: string;
+  // JSON文字列: { "id": { "deviceId": "...", "label": "表示名" }, ... }（温湿度・CO2センサー。未設定可）
+  SENSOR_DEVICES?: string;
   ASSETS: Fetcher;
 }
 
@@ -22,6 +24,16 @@ function getPlugDevices(env: Env): Record<string, DeviceEntry> {
 
 function getIrLights(env: Env): Record<string, DeviceEntry> {
   return JSON.parse(env.IR_LIGHTS);
+}
+
+// SENSOR_DEVICES はsecret未設定でもページ全体が落ちないよう、パース失敗時は空扱いにする
+function getSensorDevices(env: Env): Record<string, DeviceEntry> {
+  if (!env.SENSOR_DEVICES) return {};
+  try {
+    return JSON.parse(env.SENSOR_DEVICES);
+  } catch {
+    return {};
+  }
 }
 
 const IR_LIGHT_COMMANDS = new Set(['turnOn', 'turnOff', 'brightnessUp', 'brightnessDown']);
@@ -128,6 +140,38 @@ export default {
         }),
       });
       return jsonResponse(await res.json());
+    }
+
+    // GET /sensors — 登録済みセンサーの計測値を返す（読み取り専用、deviceIdは非公開）
+    // 温湿度計Pro CO2（deviceType: MeterPro(CO2)）は temperature / humidity / CO2 / battery を返す
+    if (pathname === '/sensors' && request.method === 'GET') {
+      const sensors = await Promise.all(
+        Object.entries(getSensorDevices(env)).map(async ([id, d]) => {
+          const empty = { id, label: d.label, temperature: null, humidity: null, co2: null, battery: null };
+          try {
+            const res = await fetch(`${SWITCHBOT_API_BASE}/v1.1/devices/${d.deviceId}/status`, {
+              headers: await buildSwitchBotHeaders(env.SWITCHBOT_TOKEN, env.SWITCHBOT_SECRET),
+            });
+            const data = await res.json<{
+              statusCode: number;
+              body?: { temperature?: number; humidity?: number; CO2?: number; battery?: number };
+            }>();
+            if (data.statusCode !== 100) return empty;
+            const b = data.body ?? {};
+            return {
+              id,
+              label: d.label,
+              temperature: b.temperature ?? null,
+              humidity: b.humidity ?? null,
+              co2: b.CO2 ?? null,
+              battery: b.battery ?? null,
+            };
+          } catch {
+            return empty;
+          }
+        })
+      );
+      return jsonResponse(sensors);
     }
 
     // GET /ir-lights — 登録済み赤外線照明一覧（deviceIdは非公開、id/labelのみ返す）
