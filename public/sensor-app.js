@@ -126,8 +126,14 @@ async function initSensors(showErrorToast = false) {
   }
 }
 
-function refreshSensors() {
-  initSensors(true);
+async function refreshSensors() {
+  const btn = document.getElementById('sensorRefreshBtn');
+  btn.classList.add('spinning');
+  try {
+    await initSensors(true);
+  } finally {
+    btn.classList.remove('spinning');
+  }
 }
 
 function buildSensorIntervals() {

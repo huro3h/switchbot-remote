@@ -81,8 +81,8 @@ function renderAutoStatus() {
 
 function renderAutoControl() {
   const toggle = document.getElementById('autoControlToggle');
-  toggle.classList.toggle('active', autoConfig.enabled);
-  toggle.textContent = autoConfig.enabled ? 'ON' : 'OFF';
+  toggle.classList.toggle('on', autoConfig.enabled);
+  toggle.setAttribute('aria-pressed', autoConfig.enabled ? 'true' : 'false');
   document.getElementById('autoControlBody').hidden = !autoConfig.enabled;
   buildAutoControlUI();
   renderAutoStatus();
