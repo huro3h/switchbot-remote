@@ -52,7 +52,7 @@ npx wrangler secret put SENSOR_DEVICES
 - **電源**: ON/OFF を独立したボタンとして分離（トグル式ではない）。冪等性のため、現在の状態に関わらずボタンは常に対応する `power` 値を明示的に送信する
 - **モード**: 普段は「モード：冷房」のようにテキスト表示のみ。右の「変更」でボタン群を開き、選ぶと送信して自動的に閉じる（頻繁に切り替えるものではないため常時表示しない）。表示名は `MODE_LABELS` で管理
 - **温度**: `−` / `＋` で相対変更。SwitchBot API は `setAll`（絶対値）のみ対応のため、毎回 temperature/mode/fanSpeed/power をすべて送信する
-- **プリセット（温度＋風量）**: 「20°C 自動」「26°C 風量4」のように温度と風量の組み合わせを4つ保存できる。`public/app.js` の `DEFAULT_PRESETS`（`{ temperature, fanSpeed }` の配列）で初期値を管理し、ユーザーが変更した値は `localStorage('ac_presets')` に保存される。旧形式（`[18, 22, 25, 27]` のような数値配列）は `normalizePreset()` で `{ temperature, fanSpeed: 1 }` に自動移行する
+- **プリセット（温度＋風量）**: 「20°C 自動」「26°C 風量4」のように温度と風量の組み合わせを5つ保存できる。数は `DEFAULT_PRESETS` の要素数で決まり、保存済みが足りない場合はデフォルトで補われるため、配列に足すだけで増やせる。`public/app.js` の `DEFAULT_PRESETS`（`{ temperature, fanSpeed }` の配列）で初期値を管理し、ユーザーが変更した値は `localStorage('ac_presets')` に保存される。旧形式（`[18, 22, 25, 27]` のような数値配列）は `normalizePreset()` で `{ temperature, fanSpeed: 1 }` に自動移行する
 - **モードはプリセットに含めない**: プリセット適用時は温度・風量のみ書き換え、`mode` は画面で現在選択中の値（`state.mode`）をそのまま送信する（`setAll` は全項目必須のため）。現在の温度・風量と一致するプリセットボタンはハイライトされる
 - **状態の永続化**: 最後に送信した状態を `localStorage('ac_state')` に保存（エアコンは IR のため API から状態取得不可）
 
@@ -102,23 +102,28 @@ npx wrangler secret put SENSOR_DEVICES
 - **機能追加**（新しいデバイス種別、新しいUI機能）は MINOR
 - **バグ修正・表示調整**は PATCH
 
+変更を加えたら、まず `CHANGELOG.md` の `## [Unreleased]` に追記していく（`### 追加` / `### 変更` / `### 修正` / `### 削除`）。リリース時に `[Unreleased]` をバージョン見出しに置き換える。
+
 リリース手順:
 
 ```bash
 npm version <major|minor|patch> --no-git-tag-version   # package.json を更新
 # public/index.html の .app-version のテキストも同じ値に書き換える
+# CHANGELOG.md の [Unreleased] を ## [X.Y.Z] - YYYY-MM-DD にし、
+#   新しい空の [Unreleased] と、最下部の比較リンクを追加する
 git commit -am "vX.Y.Z"
 git tag vX.Y.Z
 git push && git push --tags
 npx wrangler deploy
 ```
 
-**バージョンの記載箇所は2つ**（ビルドステップがないため自動同期はされない）:
+**バージョンの記載箇所は3つ**（ビルドステップがないため自動同期はされない）:
 
 | 場所 | 用途 |
 |---|---|
 | `package.json` の `version` | 基準となる値 |
 | `public/index.html` の `.app-version` | 画面最下部の表示 |
+| `CHANGELOG.md` の見出し | 変更履歴 |
 
 Cloudflare 側の Version ID（`wrangler deploy` が出力）はデプロイごとに変わる別物で、アプリのバージョンとは対応しない。
 

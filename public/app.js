@@ -9,6 +9,7 @@ const DEFAULT_PRESETS = [
   { temperature: 22, fanSpeed: 1 },
   { temperature: 25, fanSpeed: 1 },
   { temperature: 27, fanSpeed: 1 },
+  { temperature: 29, fanSpeed: 1 },
 ];
 const FAN_OPTIONS = [
   { value: 1, label: '自動' },
@@ -33,7 +34,10 @@ function normalizePreset(preset, index) {
 }
 
 let state = { ...DEFAULT_STATE, ...JSON.parse(localStorage.getItem('ac_state') || '{}') };
-let presets = (JSON.parse(localStorage.getItem('ac_presets') || 'null') || DEFAULT_PRESETS).map(normalizePreset);
+// 保存済みの数がDEFAULT_PRESETSより少なくても（プリセットを4→5に増やした場合など）、
+// 足りない分はデフォルトで補い、常に DEFAULT_PRESETS と同じ数に揃える
+const storedPresets = JSON.parse(localStorage.getItem('ac_presets') || 'null');
+let presets = DEFAULT_PRESETS.map((fallback, i) => normalizePreset(storedPresets?.[i] ?? fallback, i));
 
 function saveState() {
   localStorage.setItem('ac_state', JSON.stringify(state));
