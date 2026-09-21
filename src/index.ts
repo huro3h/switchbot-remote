@@ -1,3 +1,6 @@
+// バージョンは package.json を唯一の正とし、配信時に HTML へ埋め込む（二重管理を避けるため）
+import pkg from '../package.json';
+
 const SWITCHBOT_API_BASE = 'https://api.switch-bot.com';
 
 interface DeviceEntry {
@@ -66,6 +69,19 @@ async function buildSwitchBotHeaders(token: string, secret: string): Promise<Rec
     nonce,
     'Content-Type': 'application/json',
   };
+}
+
+class VersionInjector {
+  element(element: Element) {
+    element.setInnerContent(`v${pkg.version}`);
+  }
+}
+
+// #appVersion の中身にバージョンを流し込む。HTML以外のアセットはそのまま返す
+async function serveAsset(request: Request, env: Env): Promise<Response> {
+  const res = await env.ASSETS.fetch(request);
+  if (!(res.headers.get('content-type') ?? '').includes('text/html')) return res;
+  return new HTMLRewriter().on('#appVersion', new VersionInjector()).transform(res);
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -206,6 +222,6 @@ export default {
       return jsonResponse(await res.json());
     }
 
-    return env.ASSETS.fetch(request);
+    return serveAsset(request, env);
   },
 };

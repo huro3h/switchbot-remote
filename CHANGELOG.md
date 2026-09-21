@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-21
+
+### 変更
+
+- 自動制御（室温連動）の閾値温度を 0.1℃ 単位で設定できるようにした（入力欄の `step` を `0.1` に。整数のみの入力もそのまま有効）
+- 画面のバージョン表示を `package.json` から配信時に埋め込むようにし、二重管理をやめた（`HTMLRewriter` + `run_worker_first`）
+
 ## [1.1.0] - 2026-09-21
 
 ### 追加
@@ -37,7 +44,8 @@
 - エアコンの電源・温度まわりのUIを縮小し、カード全体を俯瞰しやすくした
 - 「家のエアコン」「部屋の環境」の見出しと、センサーのラベル・電池残量表示を削除した
 
-[Unreleased]: https://github.com/huro3h/switchbot-remote/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/huro3h/switchbot-remote/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/huro3h/switchbot-remote/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/huro3h/switchbot-remote/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/huro3h/switchbot-remote/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/huro3h/switchbot-remote/releases/tag/v1.0.0

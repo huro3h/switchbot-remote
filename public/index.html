@@ -799,12 +799,12 @@
       <div class="auto-control-body" id="autoControlBody" hidden>
         <div class="auto-status" id="autoStatus"></div>
         <div class="auto-rule">
-          <input type="number" class="auto-temp-input" id="autoHotTemp" min="16" max="35" onchange="saveAutoRules()">
+          <input type="number" class="auto-temp-input" id="autoHotTemp" min="16" max="35" step="0.1" onchange="saveAutoRules()">
           <span class="auto-rule-text">℃ を上回ったら</span>
           <select class="auto-preset-select" id="autoHotPreset" onchange="saveAutoRules()"></select>
         </div>
         <div class="auto-rule">
-          <input type="number" class="auto-temp-input" id="autoColdTemp" min="10" max="30" onchange="saveAutoRules()">
+          <input type="number" class="auto-temp-input" id="autoColdTemp" min="10" max="30" step="0.1" onchange="saveAutoRules()">
           <span class="auto-rule-text">℃ を下回ったら</span>
           <select class="auto-preset-select" id="autoColdPreset" onchange="saveAutoRules()"></select>
         </div>
@@ -839,7 +839,7 @@
       <div id="irLightList"></div>
     </div>
 
-    <div class="app-version">v1.1.0</div>
+    <div class="app-version" id="appVersion"></div>
   </div>
 
   <div id="toast"></div>

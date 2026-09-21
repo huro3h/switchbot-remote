@@ -108,7 +108,6 @@ npx wrangler secret put SENSOR_DEVICES
 
 ```bash
 npm version <major|minor|patch> --no-git-tag-version   # package.json を更新
-# public/index.html の .app-version のテキストも同じ値に書き換える
 # CHANGELOG.md の [Unreleased] を ## [X.Y.Z] - YYYY-MM-DD にし、
 #   新しい空の [Unreleased] と、最下部の比較リンクを追加する
 git commit -am "vX.Y.Z"
@@ -117,13 +116,11 @@ git push && git push --tags
 npx wrangler deploy
 ```
 
-**バージョンの記載箇所は3つ**（ビルドステップがないため自動同期はされない）:
+**画面のバージョン表示は `package.json` から自動で入る**（二重管理を避けるため）。`src/index.ts` が `package.json` を import し、`HTMLRewriter` で `#appVersion` の中身に `v{version}` を流し込む。HTML に数値を直書きしないこと。
 
-| 場所 | 用途 |
-|---|---|
-| `package.json` の `version` | 基準となる値 |
-| `public/index.html` の `.app-version` | 画面最下部の表示 |
-| `CHANGELOG.md` の見出し | 変更履歴 |
+この仕組みのため `wrangler.toml` の `[assets]` に `run_worker_first = ["/", "/index.html"]` を指定している。**これがないと HTML はWorkerを経由せずアセットサーバーから直接配信され、バージョンが空のままになる**（JS・CSS・画像は従来どおり直接配信）。
+
+手で書く必要があるのは `package.json` の `version` と `CHANGELOG.md` の見出しの2か所のみ。
 
 Cloudflare 側の Version ID（`wrangler deploy` が出力）はデプロイごとに変わる別物で、アプリのバージョンとは対応しない。
 
