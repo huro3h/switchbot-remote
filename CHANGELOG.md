@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-09-22
+
+### 修正
+
+- 自動制御（室温連動）が、自動送信のあとに手動で温度・風量を変えると以降まったく送信しなくなる問題を修正。再送の抑止を「前回送ったプリセット（`lastPreset`）と同じか」ではなく「エアコンが既に目標プリセットと同じ温度・風量か」で判定するようにした
+
 ## [1.1.1] - 2026-09-21
 
 ### 変更
@@ -44,7 +50,8 @@
 - エアコンの電源・温度まわりのUIを縮小し、カード全体を俯瞰しやすくした
 - 「家のエアコン」「部屋の環境」の見出しと、センサーのラベル・電池残量表示を削除した
 
-[Unreleased]: https://github.com/huro3h/switchbot-remote/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/huro3h/switchbot-remote/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/huro3h/switchbot-remote/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/huro3h/switchbot-remote/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/huro3h/switchbot-remote/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/huro3h/switchbot-remote/compare/v1.0.0...v1.0.1

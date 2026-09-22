@@ -1,7 +1,7 @@
 // 室温連動の自動制御。センサー値を取得するたびに判定し、条件を満たしたらプリセットを送信する。
 // ページを開いている間だけ動く（サーバー側のCron実装ではない）。
 const AUTO_DEFAULT = { enabled: false, hotTemp: 27, hotPreset: 0, coldTemp: 25, coldPreset: 3 };
-// 同じ条件で赤外線を連打しないためのクールダウン（同じプリセットは再送しない＋最低間隔）
+// 同じ条件で赤外線を連打しないためのクールダウン（既に同じ設定なら送らない＋最低間隔）
 const AUTO_COOLDOWN_MS = 3 * 60 * 1000;
 
 let autoConfig = { ...AUTO_DEFAULT, ...JSON.parse(localStorage.getItem('auto_control') || '{}') };
@@ -147,7 +147,11 @@ function onSensorsUpdated(sensors) {
   else if (temperature < autoConfig.coldTemp) target = autoConfig.coldPreset;
   if (target === null) return; // 閾値の間（デッドバンド）は何もしない
 
-  if (target === autoConfig.lastPreset) return; // 同じ設定の再送はしない（毎回ピッと鳴るため）
+  // 既に目標のプリセットと同じ設定なら送らない（送るたびにエアコンがピッと鳴るため）。
+  // 「前回送ったプリセット」ではなく画面の現在値と比べるのは、手動で温度・風量を変えたあとも
+  // 判定が実態に追従するようにするため（lastPreset と比べると手動操作でズレて再送されなくなる）
+  const targetPreset = presets[target];
+  if (targetPreset.temperature === state.temperature && targetPreset.fanSpeed === state.fanSpeed) return;
   if (autoConfig.lastSentAt && Date.now() - autoConfig.lastSentAt < AUTO_COOLDOWN_MS) return;
 
   sendAutoPreset(target, temperature);
